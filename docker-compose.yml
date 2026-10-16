@@ -1,0 +1,57 @@
+services:
+  # 1. Base de Dados PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: notifysell_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: notifysell
+      POSTGRES_PASSWORD: secret123
+      POSTGRES_DB: notifysellmoz
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notifysell -d notifysellmoz"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Cache e Fila Assíncrona Redis (BullMQ)
+  redis:
+    image: redis:7-alpine
+    container_name: notifysell_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 3. Evolution API (Servidor WhatsApp Baileys)
+  evolution_api:
+    image: atendai/evolution-api:v2.1.2
+    container_name: notifysell_evolution
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_URL: http://localhost:8080
+      # Copie este valor para EVOLUTION_API_KEY no .env da aplicação
+      AUTHENTICATION_API_KEY: evolution_global_secret_key_12345
+      DATABASE_ENABLED: "false"
+      CACHE_REDIS_ENABLED: "false"
+    volumes:
+      - evolution_instances:/evolution/instances
+    depends_on:
+      - redis
+
+volumes:
+  postgres_data:
+  redis_data:
+  evolution_instances:

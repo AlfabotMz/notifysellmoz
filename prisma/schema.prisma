@@ -1,0 +1,164 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  stores       Store[]
+
+  @@map("users")
+}
+
+model Store {
+  id                   String               @id @default(cuid())
+  userId               String
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shopDomain           String               @unique
+  shopName             String?
+  encryptedAccessToken String?
+  scopes               String?
+  installationStatus   String               @default("PENDING") // PENDING, ACTIVE, DISCONNECTED
+  webhookSecret        String?
+  n8nWebhookUrl        String?
+  processingMode       String               @default("DIRECT") // DIRECT, N8N
+  lastSyncAt           DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  whatsAppConnection   WhatsAppConnection?
+  recipients           Recipient[]
+  webhookEvents        WebhookEvent[]
+  orders               Order[]
+  notifications        Notification[]
+  messageTemplates     MessageTemplate[]
+
+  @@index([userId])
+  @@map("stores")
+}
+
+model WhatsAppConnection {
+  id               String    @id @default(cuid())
+  storeId          String    @unique
+  store            Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  evolutionBaseUrl String
+  instanceName     String
+  encryptedApiKey  String
+  connectionStatus String    @default("DISCONNECTED") // NOT_CONFIGURED, CONNECTING, QRCODE, CONNECTED, DISCONNECTED, ERROR
+  connectedAt      DateTime?
+  lastError        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("whatsapp_connections")
+}
+
+model Recipient {
+  id                     String   @id @default(cuid())
+  storeId                String
+  store                  Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  type                   String   // OWNER, DELIVERY
+  name                   String
+  phone                  String
+  enabled                Boolean  @default(true)
+  notificationPreferences String?  // JSON string
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@unique([storeId, type])
+  @@map("recipients")
+}
+
+model WebhookEvent {
+  id              String    @id @default(cuid())
+  storeId         String
+  store           Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  externalEventId String?   // X-Shopify-Webhook-Id
+  topic           String
+  orderId         String?
+  payloadHash     String
+  status          String    @default("PENDING") // PENDING, PROCESSED, FAILED, IGNORED, DUPLICATE
+  errorMessage    String?
+  receivedAt      DateTime  @default(now())
+  processedAt     DateTime?
+
+  @@index([storeId, externalEventId])
+  @@index([storeId, payloadHash])
+  @@map("webhook_events")
+}
+
+model Order {
+  id               String         @id @default(cuid())
+  storeId          String
+  store            Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  externalOrderId  String         // Shopify order id
+  orderNumber      String         // e.g. "#1001"
+  customerName     String
+  customerPhone    String?
+  phoneSource      String?        // shipping_address, order, customer, missing
+  phoneValid       Boolean        @default(true)
+  deliveryAddress  String?
+  currency         String         @default("MZN")
+  totalAmount      Float          @default(0)
+  financialStatus  String         // pending, paid, refunded, etc.
+  paymentMethod    String?        // cash_on_delivery, manual, shopify_payments, etc.
+  isCashOnDelivery Boolean        @default(false)
+  cancelledAt      DateTime?
+  rawPayload       String?        // Encrypted or limited metadata
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  notifications    Notification[]
+
+  @@unique([storeId, externalOrderId])
+  @@index([storeId, orderNumber])
+  @@map("orders")
+}
+
+model Notification {
+  id                String    @id @default(cuid())
+  storeId           String
+  store             Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderId           String?
+  order             Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  recipientType     String    // CUSTOMER, DELIVERY, OWNER
+  recipientPhone    String
+  messageType       String    // ORDER_CONFIRMATION, DELIVERY_ASSIGNED, OWNER_ALERT, ORDER_CANCELLED, PROCESSING_FAILURE
+  messageContent    String
+  status            String    @default("PENDING") // PENDING, SENT, DELIVERED, FAILED, UNCERTAIN
+  providerMessageId String?
+  attemptCount      Int       @default(0)
+  lastError         String?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([storeId, status])
+  @@index([orderId])
+  @@map("notifications")
+}
+
+model MessageTemplate {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  messageType String   // ORDER_CONFIRMATION, DELIVERY_ASSIGNED, OWNER_ALERT, ORDER_CANCELLED, PROCESSING_FAILURE
+  content     String
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([storeId, messageType])
+  @@map("message_templates")
+}

@@ -1,0 +1,651 @@
+﻿# PROMPT COMPLETO: Plataforma de Automação Shopify + WhatsApp
+
+## 1. Papel e objetivo
+
+Atua como um engenheiro de software sénior especializado em Next.js, TypeScript, APIs, webhooks, integrações de e-commerce, automação de processos e segurança de aplicações SaaS.
+
+Constrói uma aplicação web funcional que permita aos proprietários de lojas Shopify automatizar notificações de encomendas através do WhatsApp.
+
+A aplicação deve permitir que cada utilizador conecte a sua loja Shopify, configure a sua instância da Evolution API, associe o seu próprio WhatsApp, defina o número do entregador e, opcionalmente, o número do proprietário da loja. Deve também disponibilizar um webhook copiável para integrar a Shopify com o sistema.
+
+Não construas apenas um protótipo visual. Implementa o frontend, backend, base de dados, autenticação, integrações, tratamento de erros e documentação de instalação.
+
+Se alguma integração depender de credenciais externas, implementa o fluxo real e apresenta instruções claras para configurar essas credenciais. Nunca simules uma conexão como se fosse real.
+
+## 2. Stack tecnológica
+
+Utiliza as seguintes tecnologias:
+
+- Next.js com App Router.
+- TypeScript em modo strict.
+- React para a interface.
+- Tailwind CSS para estilos.
+- shadcn/ui para componentes da interface, se disponível.
+- PostgreSQL como base de dados.
+- Prisma ORM para o acesso à base de dados.
+- Autenticação segura com Auth.js ou uma solução equivalente.
+- Zod para validação de dados.
+- API Routes ou Route Handlers do Next.js para o backend.
+- Um sistema de jobs para processar notificações de forma assíncrona, preferencialmente BullMQ com Redis.
+- Shopify Admin API e Shopify Webhooks.
+- Evolution API para o envio de mensagens WhatsApp.
+- n8n como integração opcional, permitindo que o utilizador escolha entre um fluxo processado diretamente pela aplicação ou um fluxo encaminhado para o seu n8n.
+
+Utiliza versões estáveis e compatíveis das bibliotecas no momento da implementação. Consulta a documentação oficial antes de definir endpoints, autenticação ou estruturas de payload.
+
+Não assumes que todas as funcionalidades estão disponíveis em todas as versões da Evolution API ou em todos os planos da Shopify.
+
+## 3. Conceito do produto
+
+A aplicação é uma plataforma de notificações de encomendas para lojas Shopify.
+
+Quando um cliente cria uma encomenda, o sistema deve receber o evento da Shopify, validar os dados, identificar o número de WhatsApp do cliente e enviar as notificações configuradas.
+
+O caso de utilização principal é o pagamento contra entrega.
+
+A mensagem ao cliente deve confirmar que a encomenda foi recebida e informar o valor que deverá pagar ao receber o produto.
+
+O sistema não pode afirmar que o pagamento já foi realizado.
+
+O entregador deve receber uma notificação com os dados necessários para executar a entrega.
+
+O proprietário da loja poderá ativar notificações adicionais sobre novas encomendas, falhas de envio ou outras ocorrências operacionais.
+
+## 4. Interface e experiência do utilizador
+
+Cria uma interface profissional, simples e responsiva, adequada a um pequeno negócio ou empreendedor digital.
+
+O idioma inicial da aplicação deve ser português. Utiliza português natural, com terminologia clara para utilizadores de Moçambique.
+
+A moeda de apresentação deve suportar MZN, mas o sistema deve utilizar a moeda real recebida da Shopify.
+
+Utiliza um design moderno, com navegação lateral no desktop e navegação adaptada ao telemóvel.
+
+Cria as seguintes páginas:
+
+### A. Página de autenticação
+
+Implementa:
+
+- Registo de utilizador.
+- Início de sessão.
+- Recuperação de palavra-passe.
+- Terminar sessão.
+- Proteção das páginas privadas.
+
+Cada utilizador deve ter acesso apenas às suas próprias lojas e configurações.
+
+### B. Dashboard
+
+Apresenta:
+
+- Estado da conexão à Shopify.
+- Estado da conexão ao WhatsApp.
+- Número de encomendas processadas.
+- Mensagens enviadas ao cliente.
+- Mensagens enviadas ao entregador.
+- Mensagens com falha.
+- Últimas encomendas processadas.
+- Últimos erros.
+- Botão para configurar a integração.
+- Botão para testar o envio de uma mensagem.
+
+Os indicadores devem ser calculados a partir dos dados reais da aplicação.
+
+Quando não existirem dados, apresenta um estado vazio informativo em vez de números inventados.
+
+### C. Página de integração com a Shopify
+
+Cria uma secção intitulada "Conectar a Shopify".
+
+Deve incluir:
+
+- Campo para o domínio da loja, por exemplo `minha-loja.myshopify.com`.
+- Botão "Conectar Shopify".
+- Estado da conexão.
+- Nome da loja, quando disponível.
+- Data da última sincronização.
+- Estado da subscrição de webhooks.
+- Lista dos eventos configurados.
+- Botão para testar a conexão.
+- Botão para desconectar a loja.
+
+Implementa OAuth oficial da Shopify através de uma aplicação Shopify devidamente configurada, utilizando os scopes mínimos necessários.
+
+Não peças ao utilizador que cole um token administrativo permanente no frontend.
+
+Após a autorização, guarda os tokens exclusivamente no backend, encriptados em repouso.
+
+A aplicação deve registar automaticamente os webhooks necessários, verificando se já existem subscrições equivalentes antes de criar novas.
+
+### D. Página de configuração do WhatsApp
+
+Cria uma página intitulada "Conectar WhatsApp".
+
+Deve apresentar duas opções de configuração:
+
+**Opção 1: Conectar uma instância existente da Evolution API**
+
+Campos:
+
+- URL base da Evolution API.
+- Nome da instância.
+- API Key.
+- Botão "Guardar configuração".
+- Botão "Verificar conexão".
+- Botão "Consultar estado do WhatsApp".
+- Botão "Atualizar estado".
+
+A API Key deve ser introduzida num campo protegido, nunca devolvida integralmente pela API da aplicação e nunca exposta em logs.
+
+A URL base e os endpoints devem ser compatíveis com a versão instalada da Evolution API.
+
+**Opção 2: Conectar o WhatsApp através de QR Code**
+
+Disponibiliza um botão "Conectar WhatsApp".
+
+Quando o utilizador clicar, o backend deve comunicar com a Evolution API para solicitar a conexão da instância, obter os dados necessários e apresentar o QR Code ao utilizador.
+
+O QR Code deve ser apresentado de forma segura, com atualização do estado da conexão.
+
+Apresenta estados distintos:
+
+- Não configurado.
+- A configurar.
+- A aguardar leitura do QR Code.
+- Conectado.
+- Desconectado.
+- Erro de conexão.
+
+Não apresentes um QR Code estático ou fictício.
+
+Se a instância não estiver criada, implementa o fluxo de criação através da API oficial da versão utilizada. Se forem necessárias operações administrativas ou configuração prévia do servidor, apresenta instruções claras.
+
+A aplicação deve permitir testar o envio de uma mensagem para um número indicado pelo próprio utilizador, antes de ativar a automação.
+
+### E. Página de contactos e destinatários
+
+Cria uma página intitulada "Destinatários".
+
+Esta página deve permitir configurar separadamente os números de WhatsApp para cada finalidade.
+
+**1. WhatsApp do proprietário da loja**
+
+Campos:
+
+- Nome do proprietário.
+- Número de WhatsApp.
+- Ativar ou desativar notificações.
+- Escolher os eventos que devem gerar notificações.
+
+O número do proprietário é opcional.
+
+**2. WhatsApp do entregador**
+
+Campos:
+
+- Nome do entregador ou identificação.
+- Número de WhatsApp.
+- Ativar ou desativar notificações.
+- Escolher se recebe todas as encomendas ou apenas as que necessitam de entrega.
+
+Nesta primeira versão, deve existir um único número fixo para o entregador.
+
+**3. WhatsApp do cliente**
+
+O contacto deve ser obtido automaticamente dos dados da encomenda Shopify.
+
+A aplicação deve permitir configurar a prioridade dos campos utilizados:
+
+1. Telefone do endereço de entrega.
+2. Telefone da encomenda.
+3. Telefone do perfil do cliente.
+
+Se não existir um telefone válido, a aplicação deve registar o problema e apresentar a encomenda para revisão manual.
+
+Nunca inventes números nem envies mensagens para contactos inválidos.
+
+Os números devem ser normalizados para formato internacional antes do envio, sem acrescentar indicativos duplicados.
+
+Todos os números de destinatários devem ser configuráveis pelo utilizador e guardados na base de dados.
+
+### F. Página de webhook
+
+Cria uma página intitulada "Webhook da Shopify".
+
+Esta página deve apresentar:
+
+- URL de webhook da aplicação.
+- Botão "Copiar webhook".
+- Botão "Regenerar segredo", quando aplicável.
+- Estado do webhook.
+- Data do último evento recebido.
+- Tipo do último evento.
+- Resultado da última validação.
+- Número de eventos recebidos.
+- Instruções para configurar o webhook na Shopify.
+- Botão "Enviar evento de teste", sem produzir mensagens reais por defeito.
+
+O URL deve ser gerado e disponibilizado pelo backend.
+
+O webhook deve estar associado à loja correta e protegido por verificação criptográfica.
+
+Não permitas que um utilizador consulte eventos ou segredos de outra loja.
+
+**Importante:** utiliza a URL de webhook que realmente corresponde à arquitetura implementada.
+
+Se o processamento ocorrer diretamente na aplicação Next.js, o webhook deve apontar para um endpoint da aplicação.
+
+Se o processamento ocorrer através do n8n, disponibiliza um URL real do n8n, quando configurado, e define claramente como os eventos autenticados são encaminhados para esse fluxo.
+
+Não apresentes um URL fictício como se fosse funcional.
+
+### G. Página de mensagens
+
+Cria uma página onde o utilizador possa personalizar as mensagens enviadas.
+
+Disponibiliza modelos separados para:
+
+- Confirmação de encomenda ao cliente.
+- Nova encomenda para o entregador.
+- Notificação ao proprietário.
+- Falha no processamento de uma encomenda.
+
+Permite utilizar variáveis como:
+
+- `{{customer_name}}`
+- `{{order_number}}`
+- `{{products}}`
+- `{{total}}`
+- `{{currency}}`
+- `{{delivery_address}}`
+- `{{customer_phone}}`
+- `{{payment_method}}`
+
+Valida as variáveis antes de guardar o modelo.
+
+Apresenta uma pré-visualização com dados de exemplo claramente identificados.
+
+A mensagem de confirmação deve indicar que a encomenda foi recebida e que o pagamento será efetuado na entrega.
+
+Não afirmes que a encomenda foi paga.
+
+### H. Página de encomendas e histórico
+
+Cria uma tabela com:
+
+- Número da encomenda.
+- Nome do cliente.
+- Data.
+- Total.
+- Estado da encomenda.
+- Estado da mensagem ao cliente.
+- Estado da mensagem ao entregador.
+- Estado da notificação ao proprietário.
+- Último erro.
+- Botão para consultar detalhes.
+
+Permite filtrar por estado, data e número da encomenda.
+
+A página de detalhes deve apresentar os eventos relevantes e o histórico de tentativas de envio.
+
+Disponibiliza um botão para repetir apenas uma notificação que tenha falhado, depois de confirmar que a tentativa anterior não foi concluída.
+
+## 5. Arquitetura do processamento
+
+Implementa o seguinte fluxo:
+
+1. A Shopify cria uma encomenda.
+2. A Shopify envia um webhook para a aplicação.
+3. O backend verifica a assinatura HMAC sobre o corpo bruto da requisição.
+4. O backend identifica a loja pelo webhook e valida o evento.
+5. O evento é registado de forma idempotente.
+6. A aplicação verifica se a encomenda está cancelada ou inválida.
+7. A aplicação identifica o método e o estado do pagamento.
+8. A aplicação obtém os dados do cliente, produtos, total e endereço.
+9. O backend cria tarefas para cada destinatário aplicável.
+10. O sistema envia as mensagens através da Evolution API.
+11. O resultado de cada envio é registado individualmente.
+12. O dashboard é atualizado com os resultados.
+
+Não bloqueies o endpoint do webhook enquanto aguardas todos os envios. Valida o evento, regista-o e coloca o processamento numa fila de tarefas.
+
+Responde à Shopify com um código HTTP apropriado após a receção e persistência segura do evento.
+
+Se a persistência falhar, não confirmes o processamento como concluído.
+
+## 6. Regras para pagamento contra entrega
+
+A automação deve reconhecer que uma encomenda pode ser criada antes de existir pagamento.
+
+Quando uma encomenda é recebida:
+
+- Se estiver válida e não cancelada, pode gerar uma confirmação de receção.
+- Se o método for contra entrega, a mensagem deve indicar o valor previsto para pagamento na entrega.
+- Se o pagamento estiver pendente, não o classifiques como pago.
+- Se estiver cancelada, não envies novas notificações normais de entrega.
+- Se o método de pagamento não puder ser identificado, utiliza uma mensagem neutra e regista a situação.
+
+Não assumes que todas as encomendas Shopify são contra entrega.
+
+Implementa regras de cancelamento e, se possível, um evento para comunicar cancelamentos ao entregador quando a encomenda já tiver sido atribuída.
+
+## 7. Segurança e isolamento entre lojas
+
+A aplicação deve funcionar como uma plataforma multi-tenant.
+
+Cada loja pertence a um utilizador ou organização.
+
+Implementa:
+
+- Autorização em todas as operações.
+- Validação de dados no servidor.
+- Proteção contra acesso a dados de outras lojas.
+- Encriptação de credenciais sensíveis.
+- Gestão segura de sessões.
+- Rate limiting.
+- Proteção contra SSRF na configuração da URL da Evolution API.
+- Verificação de assinaturas de webhooks.
+- Registos sem tokens ou API Keys.
+- Segredos guardados apenas no backend.
+- Proteção contra processamento repetido de webhooks.
+- Política de retenção e eliminação de dados pessoais.
+- Tratamento seguro de erros.
+
+As credenciais da Shopify, Evolution API e n8n não podem ser expostas em componentes React, no armazenamento local do navegador ou em respostas públicas da API.
+
+Se permitires URLs de servidores fornecidas pelo utilizador, bloqueia destinos internos e endereços de rede privada, com validação apropriada contra SSRF.
+
+## 8. Base de dados
+
+Cria um esquema Prisma com entidades equivalentes a:
+
+**User**
+- id
+- name
+- email
+- passwordHash ou dados do provider de autenticação
+- createdAt
+
+**Store**
+- id
+- userId
+- shopDomain
+- encryptedAccessToken
+- scopes
+- installationStatus
+- createdAt
+- updatedAt
+
+**WhatsAppConnection**
+- id
+- storeId
+- evolutionBaseUrl
+- instanceName
+- encryptedApiKey
+- connectionStatus
+- connectedAt
+- updatedAt
+
+**Recipient**
+- id
+- storeId
+- type: OWNER ou DELIVERY
+- name
+- phone
+- enabled
+- notificationPreferences
+
+**WebhookEvent**
+- id
+- storeId
+- externalEventId, quando disponível
+- topic
+- orderId
+- payloadHash
+- status
+- receivedAt
+- processedAt
+
+**Order**
+- id
+- storeId
+- externalOrderId
+- orderNumber
+- customerName
+- customerPhone
+- deliveryAddress
+- currency
+- totalAmount
+- financialStatus
+- cancelledAt
+- createdAt
+- updatedAt
+
+**Notification**
+- id
+- storeId
+- orderId
+- recipientType
+- recipientPhone
+- messageType
+- messageContent
+- status
+- providerMessageId
+- attemptCount
+- lastError
+- sentAt
+- deliveredAt
+- createdAt
+- updatedAt
+
+**MessageTemplate**
+- id
+- storeId
+- messageType
+- content
+- enabled
+- updatedAt
+
+Acrescenta índices e restrições de unicidade adequados.
+
+A unicidade de uma encomenda deve incluir a loja e o identificador externo da Shopify.
+
+Os eventos também devem possuir uma chave de idempotência apropriada.
+
+Não guardes payloads completos indefinidamente se contiverem dados pessoais desnecessários.
+
+## 9. Integração com a Evolution API
+
+Cria um módulo de serviço independente, por exemplo `lib/evolution/client.ts`.
+
+Implementa funções equivalentes a:
+
+- `checkConnection()`
+- `createInstance()`
+- `getQrCode()`
+- `getConnectionState()`
+- `sendTextMessage()`
+- `configureWebhooks()`, se suportado pela versão utilizada.
+
+Centraliza neste módulo todos os endpoints e detalhes específicos da Evolution API.
+
+Não espalhes chamadas HTTP pela interface React.
+
+Valida as respostas da API e converte erros do fornecedor em erros internos claros.
+
+Implementa timeouts, retries limitados e tratamento de rate limits.
+
+Não repitas automaticamente um envio se não for possível determinar se a primeira tentativa chegou a ser aceite. Nesse caso, utiliza um estado de resultado incerto e um procedimento de reconciliação para evitar mensagens duplicadas.
+
+Se a Evolution API suportar webhooks de estado de mensagens, utiliza-os para atualizar os estados de entrega.
+
+## 10. Integração opcional com n8n
+
+A aplicação deve permitir dois modos de execução:
+
+**Modo A: processamento direto**
+
+Shopify → Backend Next.js → Fila de tarefas → Evolution API.
+
+**Modo B: processamento via n8n**
+
+Shopify → Endpoint seguro → n8n → Evolution API.
+
+No modo B, o n8n pode comunicar com o backend para consultar as configurações e registar resultados, mas não deve receber segredos de outras lojas.
+
+Cria uma configuração para o URL do n8n e uma opção para copiar o webhook correspondente.
+
+Não tornes o n8n obrigatório para o funcionamento básico da aplicação.
+
+Não permitas que o modo direto e o modo n8n processem simultaneamente o mesmo evento sem uma estratégia explícita de idempotência.
+
+## 11. Endpoints internos
+
+Organiza os Route Handlers de forma clara. Implementa endpoints equivalentes a:
+
+- `POST /api/webhooks/shopify/[storeId]`
+- `GET /api/integrations/shopify/connect`
+- `GET /api/integrations/shopify/callback`
+- `POST /api/integrations/shopify/disconnect`
+- `POST /api/integrations/whatsapp/connect`
+- `POST /api/integrations/whatsapp/test`
+- `GET /api/integrations/whatsapp/status`
+- `GET /api/integrations/whatsapp/qrcode`
+- `PUT /api/settings/recipients`
+- `PUT /api/settings/messages`
+- `GET /api/orders`
+- `GET /api/orders/[id]`
+- `POST /api/notifications/[id]/retry`
+- `GET /api/webhooks/status`
+
+Adapta os métodos e nomes quando necessário para cumprir as convenções do Next.js e dos fornecedores.
+
+Todos os endpoints privados devem validar a sessão e a autorização da loja.
+
+Os endpoints de webhook devem utilizar autenticação própria, sem depender da sessão de um utilizador.
+
+## 12. Estrutura do projeto
+
+Organiza o código de forma modular, por exemplo:
+
+- `app/`
+- `app/dashboard/`
+- `app/settings/shopify/`
+- `app/settings/whatsapp/`
+- `app/settings/recipients/`
+- `app/settings/messages/`
+- `app/webhooks/`
+- `app/orders/`
+- `app/api/`
+- `components/`
+- `components/dashboard/`
+- `components/integrations/`
+- `components/forms/`
+- `lib/auth/`
+- `lib/shopify/`
+- `lib/evolution/`
+- `lib/n8n/`
+- `lib/security/`
+- `lib/validation/`
+- `lib/queue/`
+- `lib/db/`
+- `prisma/`
+- `tests/`
+
+A estrutura final pode ser adaptada se existir uma organização tecnicamente superior.
+
+## 13. Variáveis de ambiente
+
+Cria um ficheiro `.env.example` com as variáveis necessárias, por exemplo:
+
+- `DATABASE_URL`
+- `AUTH_SECRET`
+- `APP_URL`
+- `SHOPIFY_API_KEY`
+- `SHOPIFY_API_SECRET`
+- `SHOPIFY_SCOPES`
+- `REDIS_URL`
+- `ENCRYPTION_KEY`
+- `EVOLUTION_DEFAULT_BASE_URL`, apenas se necessária
+- `N8N_BASE_URL`, apenas no modo n8n
+
+Não coloques credenciais reais no repositório.
+
+As chaves específicas de cada utilizador devem ser guardadas de forma segura na base de dados e nunca em variáveis globais partilhadas entre lojas.
+
+Documenta como gerar os segredos e configurar as variáveis de ambiente.
+
+## 14. Testes obrigatórios
+
+Cria testes automatizados para:
+
+- Receção de uma encomenda válida.
+- Verificação HMAC.
+- Rejeição de uma assinatura inválida.
+- Encomenda sem telefone.
+- Encomenda cancelada.
+- Pagamento contra entrega.
+- Repetição do mesmo webhook.
+- Falha da Evolution API.
+- Falha apenas na mensagem do entregador.
+- Tentativa de acesso aos dados de outra loja.
+- Credenciais inválidas.
+- QR Code indisponível.
+- Resultado incerto de um envio.
+- Retry de uma notificação.
+- Isolamento dos segredos entre lojas.
+
+Utiliza mocks nos testes automatizados para não enviar mensagens reais.
+
+Adiciona testes de integração para os fluxos principais.
+
+## 15. Instalação e documentação
+
+Cria um README completo que explique:
+
+1. Requisitos de instalação.
+2. Configuração do PostgreSQL.
+3. Configuração do Redis.
+4. Criação e configuração da aplicação Shopify.
+5. Configuração da Evolution API.
+6. Configuração do domínio HTTPS.
+7. Configuração dos webhooks.
+8. Configuração do n8n, caso seja utilizado.
+9. Migrações Prisma.
+10. Execução em desenvolvimento.
+11. Execução dos testes.
+12. Deploy em produção.
+13. Resolução de erros comuns.
+
+Inclui Docker Compose para o ambiente local com os serviços necessários.
+
+Não assumes que o Docker Compose local é suficiente para produção. Documenta os requisitos de persistência, backups, HTTPS, gestão de segredos e monitorização.
+
+## 16. Critérios de conclusão
+
+Considera a implementação concluída apenas quando:
+
+- O utilizador consegue autenticar-se.
+- Consegue conectar uma loja Shopify pelo fluxo oficial.
+- Consegue configurar uma instância real da Evolution API.
+- Consegue acompanhar o estado da conexão WhatsApp.
+- Consegue configurar o seu número, o número do entregador e o número opcional do proprietário.
+- Consegue copiar um URL de webhook válido.
+- A Shopify consegue enviar um evento autenticado.
+- O sistema processa a encomenda sem duplicação.
+- As mensagens são enviadas aos destinatários corretos.
+- Os erros são registados e apresentados no dashboard.
+- Os segredos permanecem no backend.
+- Os testes essenciais passam.
+- A documentação permite instalar e executar o projeto.
+
+Começa por analisar as versões atuais e a documentação oficial das APIs.
+
+Depois, apresenta um plano curto de implementação, cria a estrutura do projeto e implementa as funcionalidades por etapas.
+
+Não te limites a gerar pseudocódigo. Produz código funcional, executa os testes disponíveis e corrige os erros encontrados.
+
+Se uma funcionalidade depender de uma configuração externa ainda não fornecida, implementa a integração real e identifica claramente o passo necessário para a ativar.
+
+No final, apresenta um relatório com as funcionalidades concluídas, os testes executados, as configurações pendentes e as limitações conhecidas.
